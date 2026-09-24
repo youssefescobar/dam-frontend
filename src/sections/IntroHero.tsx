@@ -6,7 +6,6 @@ import { AiChatButton } from '../components/AiChatButton'
 import { ExploreButton } from '../components/ExploreButton'
 import { GlassCard } from '../components/glass'
 import GradualBlur from '../components/effects/GradualBlur'
-import logoAsset from '../assets/logo.svg'
 import { animationConfig as motion } from '../animations/config'
 import {
   createIntroTimeline,
@@ -391,7 +390,7 @@ export function IntroHero() {
         type="button"
         aria-label="Damic — back to top"
       >
-        <img src={logoAsset} alt="" />
+        <LogoMark className="logo-mark logo-mark--live" idPrefix="corner" />
       </button>
 
       <nav className="site-nav" ref={navRef} aria-label="Primary navigation">
