@@ -14,6 +14,7 @@ export type IntroElements = {
   nav: HTMLElement
   navBar: HTMLElement
   navItems: HTMLElement[]
+  langSwitch: HTMLElement
   heroLines: HTMLElement[]
   videoLayer: HTMLElement
   videoStage: HTMLElement
@@ -48,6 +49,7 @@ export function setIntroFinalState(elements: IntroElements) {
   gsap.set(elements.nav, { visibility: 'visible' })
   gsap.set(elements.navBar, { scaleX: 1, opacity: 1 })
   gsap.set(elements.navItems, { x: 0, opacity: 1 })
+  gsap.set(elements.langSwitch, { opacity: 1, visibility: 'visible', y: 0 })
   gsap.set(elements.heroLines, { yPercent: 0, opacity: 1 })
   gsap.set(elements.videoLayer, { opacity: 1 })
   gsap.set(elements.videoStage, {
@@ -76,6 +78,13 @@ export function createIntroTimeline(elements: IntroElements) {
   let state: 'start' | 'forward' | 'end' = 'start'
   let touchStartY = 0
 
+  const rtl = document.documentElement.dir === 'rtl'
+  const navOrigin = rtl ? 'right center' : 'left center'
+  const cardOrigin = rtl ? 'right center' : 'left center'
+  const stageOrigin = rtl ? '35% 55%' : '65% 55%'
+  const navItemFrom = rtl ? 12 : -12
+  const chatFromX = rtl ? -28 : 28
+
   gsap.set(petals, { clearProps: 'transform', opacity: 1 })
   gsap.set(elements.logo, {
     x: 0,
@@ -94,32 +103,33 @@ export function createIntroTimeline(elements: IntroElements) {
   })
   gsap.set(elements.cornerLogo, { opacity: 0, visibility: 'visible' })
   gsap.set(elements.nav, { visibility: 'visible' })
-  gsap.set(elements.navBar, { scaleX: 0, opacity: 0, transformOrigin: 'left center' })
-  gsap.set(elements.navItems, { x: -12, opacity: 0 })
+  gsap.set(elements.navBar, { scaleX: 0, opacity: 0, transformOrigin: navOrigin })
+  gsap.set(elements.navItems, { x: navItemFrom, opacity: 0 })
+  gsap.set(elements.langSwitch, { opacity: 0, visibility: 'visible', y: -10 })
   gsap.set(elements.heroLines, { yPercent: 115, opacity: 0 })
   gsap.set(elements.videoLayer, { opacity: 0 })
   gsap.set(elements.videoStage, {
     opacity: 0,
     y: 64,
     scale: 0.86,
-    rotate: -2.5,
+    rotate: rtl ? 2.5 : -2.5,
     filter: 'blur(14px)',
-    transformOrigin: '65% 55%',
+    transformOrigin: stageOrigin,
     clipPath: 'inset(18% 22% 18% 22% round 28px)',
   })
   gsap.set(elements.heroCard, {
     opacity: 0,
     y: 36,
     scale: 0.94,
-    rotate: 1.5,
-    transformOrigin: 'left center',
+    rotate: rtl ? -1.5 : 1.5,
+    transformOrigin: cardOrigin,
   })
   gsap.set(elements.aiChat, {
     opacity: 0,
     scale: 0.2,
     y: 48,
-    x: 28,
-    rotate: -28,
+    x: chatFromX,
+    rotate: rtl ? 28 : -28,
     visibility: 'hidden',
     pointerEvents: 'none',
     transformOrigin: 'center center',
@@ -286,6 +296,16 @@ export function createIntroTimeline(elements: IntroElements) {
         ease: motion.ease.soft,
       },
       motion.intro.navStart + 0.08,
+    )
+    .to(
+      elements.langSwitch,
+      {
+        opacity: 1,
+        y: 0,
+        duration: motion.intro.navDuration,
+        ease: motion.ease.soft,
+      },
+      motion.intro.navStart + 0.12,
     )
     .set(elements.logo, { opacity: 0 }, motion.intro.logoHandoffStart)
 

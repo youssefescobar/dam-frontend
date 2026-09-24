@@ -1,9 +1,17 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+} from 'react'
 import gsap from 'gsap'
 import { LogoMark } from '../components/LogoMark'
 import { HeroVideo, type HeroVideoHandle } from '../components/HeroVideo'
 import { AiChatButton } from '../components/AiChatButton'
 import { ExploreButton } from '../components/ExploreButton'
+import { SiteNav } from '../components/SiteNav'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { GlassCard } from '../components/glass'
 import GradualBlur from '../components/effects/GradualBlur'
 import { animationConfig as motion } from '../animations/config'
@@ -12,7 +20,11 @@ import {
   setIntroFinalState,
   type IntroElements,
 } from '../animations/introTimeline'
-import { useSmoothScroll } from '../animations/useSmoothScroll'
+import {
+  SmoothScrollProvider,
+  useSmoothScrollApi,
+} from '../animations/useSmoothScroll'
+import { useLanguage } from '../i18n/LanguageContext'
 import { SiteBelow } from './SiteBelow'
 
 function waitForPageAssets(root: HTMLElement) {
@@ -35,7 +47,17 @@ function waitForPageAssets(root: HTMLElement) {
   return Promise.all([fonts, ...images, ...videos])
 }
 
-export function IntroHero() {
+function IntroHeroInner({
+  loaded,
+  setLoaded,
+  prefersReducedMotion,
+}: {
+  loaded: boolean
+  setLoaded: (value: boolean) => void
+  prefersReducedMotion: boolean
+}) {
+  const { t, dir } = useLanguage()
+  const { scrollTo } = useSmoothScrollApi()
   const rootRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const logoRef = useRef<SVGSVGElement>(null)
@@ -51,17 +73,12 @@ export function IntroHero() {
   const navRef = useRef<HTMLElement>(null)
   const navBarRef = useRef<HTMLDivElement>(null)
   const navItemsRef = useRef<HTMLElement[]>([])
+  const langSwitchRef = useRef<HTMLButtonElement>(null)
   const heroLinesRef = useRef<HTMLElement[]>([])
   const heroVideoRef = useRef<HeroVideoHandle>(null)
   const heroCardRef = useRef<HTMLDivElement>(null)
   const videoStageRef = useRef<HTMLDivElement>(null)
   const aiChatRef = useRef<HTMLAnchorElement>(null)
-  const [prefersReducedMotion] = useState(
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  )
-  const [loaded, setLoaded] = useState(prefersReducedMotion)
-
-  useSmoothScroll(!loaded || prefersReducedMotion)
 
   const collectNavItem = (element: HTMLElement | null) => {
     if (element && !navItemsRef.current.includes(element)) navItemsRef.current.push(element)
@@ -83,6 +100,7 @@ export function IntroHero() {
       !brandNameRef.current ||
       !navRef.current ||
       !navBarRef.current ||
+      !langSwitchRef.current ||
       !heroVideoRef.current?.container ||
       !heroCardRef.current ||
       !videoStageRef.current ||
@@ -104,6 +122,7 @@ export function IntroHero() {
       nav: navRef.current,
       navBar: navBarRef.current,
       navItems: navItemsRef.current,
+      langSwitch: langSwitchRef.current,
       heroLines: heroLinesRef.current,
       videoLayer: heroVideoRef.current.container,
       videoStage: videoStageRef.current,
@@ -119,6 +138,7 @@ export function IntroHero() {
 
     if (prefersReducedMotion) {
       setIntroFinalState(elements)
+      setLoaded(true)
       return
     }
 
@@ -231,7 +251,7 @@ export function IntroHero() {
       reveal?.kill()
       document.body.classList.remove('is-loading')
     }
-  }, [prefersReducedMotion])
+  }, [prefersReducedMotion, setLoaded])
 
   useLayoutEffect(() => {
     if (!loaded || prefersReducedMotion) return
@@ -240,6 +260,17 @@ export function IntroHero() {
     return createIntroTimeline(elements)
   }, [loaded, prefersReducedMotion])
 
+  const goServices = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    scrollTo('#services', { offset: -88 })
+  }
+
+  const goTop = () => {
+    scrollTo('#home', { offset: 0 })
+  }
+
+  const seamSide = dir === 'rtl' ? 'right' : 'left'
+
   return (
     <section className="intro" ref={rootRef}>
       <div
@@ -247,7 +278,7 @@ export function IntroHero() {
         ref={stageRef}
         style={{ '--blob-duration': `${motion.ambient.blobDurationSeconds}s` } as CSSProperties}
       >
-        <div className="hero" aria-labelledby="hero-title">
+        <div className="hero" id="home" aria-labelledby="hero-title">
           <div className="hero__ambient" aria-hidden="true">
             <span className="hero__blob hero__blob--one" />
             <span className="hero__blob hero__blob--two" />
@@ -258,22 +289,27 @@ export function IntroHero() {
               <GlassCard className="hero__glass" ref={heroCardRef}>
                 <div className="hero__content">
                   <p className="hero__eyebrow line-mask">
-                    <span ref={collectHeroLine}>Durrah Al Munawwara Transportation</span>
+                    <span ref={collectHeroLine}>{t.hero.eyebrow}</span>
                   </p>
                   <h1 id="hero-title">
                     <span className="line-mask">
-                      <span ref={collectHeroLine}>Moving you</span>
+                      <span ref={collectHeroLine}>{t.hero.line1}</span>
                     </span>
                     <span className="line-mask">
-                      <span ref={collectHeroLine}>forward</span>
+                      <span ref={collectHeroLine}>{t.hero.line2}</span>
                     </span>
                   </h1>
                   <p className="hero__sub line-mask">
-                    <span ref={collectHeroLine}>Premium journeys, thoughtfully driven across every mile.</span>
+                    <span ref={collectHeroLine}>{t.hero.sub}</span>
                   </p>
                   <div className="line-mask line-mask--cta">
-                    <ExploreButton className="hero__cta" href="#services" ref={collectHeroLine}>
-                      Explore our services
+                    <ExploreButton
+                      className="hero__cta"
+                      href="#services"
+                      ref={collectHeroLine}
+                      onClick={goServices}
+                    >
+                      {t.hero.cta}
                     </ExploreButton>
                   </div>
                 </div>
@@ -289,7 +325,7 @@ export function IntroHero() {
                   <div className="hero__stage-seam" aria-hidden="true" />
                   <GradualBlur
                     target="parent"
-                    position="left"
+                    position={seamSide}
                     height={motion.videoBleed.left}
                     strength={motion.videoBleed.strength * 1.25}
                     divCount={motion.videoBleed.divCount}
@@ -388,41 +424,38 @@ export function IntroHero() {
         className="corner-logo"
         ref={cornerLogoRef}
         type="button"
-        aria-label="Damic — back to top"
+        aria-label={t.hero.backTop}
+        onClick={goTop}
       >
         <LogoMark className="logo-mark logo-mark--live" idPrefix="corner" />
       </button>
 
-      <nav className="site-nav" ref={navRef} aria-label="Primary navigation">
-        <div className="site-nav__bar" ref={navBarRef}>
-          <div className="site-nav__links">
-            {['Home', 'Services', 'Fleet', 'About', 'Contact'].map((item) => (
-              <a href={`#${item.toLowerCase()}`} key={item} ref={collectNavItem}>
-                {item}
-              </a>
-            ))}
-          </div>
-          <a className="site-nav__quote" href="#quote" ref={collectNavItem}>
-            Get a Quote
-          </a>
-          <button
-            className="menu-hook"
-            type="button"
-            aria-label="Menu (coming soon)"
-            ref={collectNavItem}
-          >
-            <span />
-            <span />
-          </button>
-        </div>
-      </nav>
+      <SiteNav navRef={navRef} navBarRef={navBarRef} collectNavItem={collectNavItem} />
+      <LanguageSwitcher ref={langSwitchRef} />
 
       <div className="scroll-hint" ref={hintRef} aria-hidden="true">
-        <span>Scroll to enter</span>
+        <span>{t.hero.scrollHint}</span>
         <i />
       </div>
 
       <AiChatButton href="#chat" ref={aiChatRef} />
     </section>
+  )
+}
+
+export function IntroHero() {
+  const [prefersReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+  const [loaded, setLoaded] = useState(prefersReducedMotion)
+
+  return (
+    <SmoothScrollProvider disabled={!loaded || prefersReducedMotion}>
+      <IntroHeroInner
+        loaded={loaded}
+        setLoaded={setLoaded}
+        prefersReducedMotion={prefersReducedMotion}
+      />
+    </SmoothScrollProvider>
   )
 }

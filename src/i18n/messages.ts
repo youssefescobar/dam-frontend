@@ -1,0 +1,140 @@
+export type Locale = 'en' | 'ar'
+
+export const messages = {
+  en: {
+    nav: {
+      home: 'Home',
+      services: 'Services',
+      fleet: 'Fleet',
+      about: 'About',
+      contact: 'Contact',
+      quote: 'Get a Quote',
+      menu: 'Menu',
+      lang: 'العربية',
+      langAria: 'Switch to Arabic',
+    },
+    hero: {
+      eyebrow: 'Durrah Al Munawwara Transportation',
+      line1: 'Moving you',
+      line2: 'forward',
+      sub: 'Premium journeys, thoughtfully driven across every mile.',
+      cta: 'Explore our services',
+      scrollHint: 'Scroll to enter',
+      chatAria: 'Chat with Damic AI',
+      chatWith: 'Chat with',
+      chatAi: 'AI',
+      brand: 'Damic',
+      backTop: 'Damic — back to top',
+    },
+    services: {
+      eyebrow: 'Services',
+      title: 'Built for every mile that matters',
+      lead: 'Dummy copy for now — swap these blocks as product pages and booking flows take shape.',
+      items: [
+        {
+          title: 'Corporate fleet',
+          copy: 'Executive shuttles and scheduled routes for teams that need to move with calm precision.',
+        },
+        {
+          title: 'Airport transfers',
+          copy: 'Meet-and-greet arrivals, live flight tracking, and quiet cabins from curb to gate.',
+        },
+        {
+          title: 'Group journeys',
+          copy: 'Coaches and mid-size buses for events, pilgrimages, and multi-city itineraries.',
+        },
+      ],
+    },
+    fleet: {
+      eyebrow: 'Fleet',
+      title: 'A lineup ready when you are',
+      lead: 'Placeholder fleet cards so the scroll rhythm is already here while specs and photos land.',
+      items: [
+        { name: 'S-Class coach', seats: '49 seats', note: 'Highway comfort' },
+        { name: 'Executive van', seats: '14 seats', note: 'City agile' },
+        { name: 'VIP sprinter', seats: '8 seats', note: 'Private detail' },
+      ],
+    },
+    about: {
+      eyebrow: 'About',
+      title: 'Durrah Al Munawwara Transportation',
+      lead: 'This band is temporary scaffolding. Keep the hero locked, then grow services, fleet, and contact into this stack without fighting the intro again.',
+      link: 'Jump to contact',
+    },
+    contact: {
+      eyebrow: 'Contact',
+      title: 'Let’s plan the next departure',
+      lead: 'Placeholder CTA — wire forms, WhatsApp, or booking when you’re ready.',
+      link: 'Get a quote',
+    },
+  },
+  ar: {
+    nav: {
+      home: 'الرئيسية',
+      services: 'الخدمات',
+      fleet: 'الأسطول',
+      about: 'من نحن',
+      contact: 'تواصل',
+      quote: 'اطلب عرض سعر',
+      menu: 'القائمة',
+      lang: 'English',
+      langAria: 'التبديل إلى الإنجليزية',
+    },
+    hero: {
+      eyebrow: 'درة المنورة للنقل',
+      line1: 'ننقلك',
+      line2: 'إلى الأمام',
+      sub: 'رحلات راقية، تُقاد بعناية في كل ميل.',
+      cta: 'استكشف خدماتنا',
+      scrollHint: 'مرّر للدخول',
+      chatAria: 'محادثة مع ذكاء داميك',
+      chatWith: 'تحدث مع',
+      chatAi: 'الذكاء',
+      brand: 'داميك',
+      backTop: 'داميك — العودة للأعلى',
+    },
+    services: {
+      eyebrow: 'الخدمات',
+      title: 'مصممة لكل ميل يستحق',
+      lead: 'نص تجريبي الآن — استبدل هذه الكتل عندما تكتمل صفحات المنتجات والحجز.',
+      items: [
+        {
+          title: 'أسطول الشركات',
+          copy: 'نقل تنفيذي ومسارات مجدولة للفرق التي تحتاج حركة هادئة ودقيقة.',
+        },
+        {
+          title: 'نقل المطار',
+          copy: 'استقبال عند الوصول، تتبع للرحلات، وغرف هادئة من الرصيف إلى البوابة.',
+        },
+        {
+          title: 'رحلات جماعية',
+          copy: 'حافلات متوسطة وكبيرة للمناسبات والحج والعمرات والمسارات متعددة المدن.',
+        },
+      ],
+    },
+    fleet: {
+      eyebrow: 'الأسطول',
+      title: 'تشكيلة جاهزة متى احتجت',
+      lead: 'بطاقات أسطول مؤقتة لإيقاع التمرير، بينما تُضاف المواصفات والصور لاحقاً.',
+      items: [
+        { name: 'حافلة S-Class', seats: '٤٩ مقعداً', note: 'راحة الطرق' },
+        { name: 'فان تنفيذي', seats: '١٤ مقعداً', note: 'مرونة المدينة' },
+        { name: 'سبرينتر VIP', seats: '٨ مقاعد', note: 'تفاصيل خاصة' },
+      ],
+    },
+    about: {
+      eyebrow: 'من نحن',
+      title: 'درة المنورة للنقل',
+      lead: 'هذا القسم مؤقت. ثبّت البطل أولاً، ثم وسّع الخدمات والأسطول والتواصل دون إعادة بناء المقدمة.',
+      link: 'الانتقال للتواصل',
+    },
+    contact: {
+      eyebrow: 'تواصل',
+      title: 'لنخطط للانطلاقة القادمة',
+      lead: 'دعوة مؤقتة — اربط النماذج أو واتساب أو الحجز عندما تكون جاهزاً.',
+      link: 'اطلب عرض سعر',
+    },
+  },
+} as const
+
+export type Messages = (typeof messages)[Locale]
