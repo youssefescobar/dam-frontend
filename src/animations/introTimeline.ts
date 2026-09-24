@@ -73,7 +73,7 @@ export function setIntroFinalState(elements: IntroElements) {
 export function createIntroTimeline(elements: IntroElements) {
   const petals = Array.from(elements.logo.querySelectorAll<SVGGElement>('.petal'))
   const destination = () => destinationFor(elements.logo, elements.target)
-  let state: 'start' | 'forward' | 'end' | 'reverse' = 'start'
+  let state: 'start' | 'forward' | 'end' = 'start'
   let touchStartY = 0
 
   gsap.set(petals, { clearProps: 'transform', opacity: 1 })
@@ -132,21 +132,6 @@ export function createIntroTimeline(elements: IntroElements) {
     defaults: { ease: motion.ease.inOut },
     onComplete: () => {
       state = 'end'
-      unlockScroll()
-    },
-    onReverseComplete: () => {
-      state = 'start'
-      gsap.set(elements.logo, { opacity: 1 })
-      gsap.set(elements.petalFlights, { opacity: 0 })
-      gsap.set(elements.aiChat, {
-        opacity: 0,
-        scale: 0.2,
-        y: 48,
-        x: 28,
-        rotate: -28,
-        visibility: 'hidden',
-        pointerEvents: 'none',
-      })
       unlockScroll()
     },
   })
@@ -311,43 +296,37 @@ export function createIntroTimeline(elements: IntroElements) {
     timeline.play()
   }
 
-  const playReverse = () => {
-    if (state === 'reverse' || state === 'start') return
-    state = 'reverse'
-    document.body.classList.add('is-transitioning')
-    timeline.reverse()
-  }
-
   const onWheel = (event: WheelEvent) => {
+    if (state === 'end' || state === 'forward') return
+    if (event.deltaY <= 0) return
     event.preventDefault()
-    if (event.deltaY > 0) playForward()
-    else playReverse()
+    playForward()
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
+    if (state === 'end' || state === 'forward') return
     if (['ArrowDown', 'PageDown', ' ', 'Enter'].includes(event.key)) {
       event.preventDefault()
       playForward()
     }
-    if (['ArrowUp', 'PageUp'].includes(event.key)) {
-      event.preventDefault()
-      playReverse()
-    }
   }
 
-  const onClick = () => playForward()
+  const onClick = () => {
+    if (state === 'end' || state === 'forward') return
+    playForward()
+  }
 
   const onTouchStart = (event: TouchEvent) => {
     touchStartY = event.touches[0]?.clientY ?? 0
   }
 
   const onTouchMove = (event: TouchEvent) => {
+    if (state === 'end' || state === 'forward') return
     const y = event.touches[0]?.clientY ?? 0
     const delta = touchStartY - y
-    if (Math.abs(delta) < 18) return
+    if (delta < 18) return
     event.preventDefault()
-    if (delta > 0) playForward()
-    else playReverse()
+    playForward()
   }
 
   window.addEventListener('wheel', onWheel, { passive: false, capture: true })

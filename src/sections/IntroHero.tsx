@@ -14,6 +14,7 @@ import {
   type IntroElements,
 } from '../animations/introTimeline'
 import { useSmoothScroll } from '../animations/useSmoothScroll'
+import { SiteBelow } from './SiteBelow'
 
 function waitForPageAssets(root: HTMLElement) {
   const fonts = document.fonts?.ready ?? Promise.resolve()
@@ -300,17 +301,6 @@ export function IntroHero() {
                   />
                   <GradualBlur
                     target="parent"
-                    position="right"
-                    height={motion.videoBleed.right}
-                    strength={motion.videoBleed.strength}
-                    divCount={motion.videoBleed.divCount}
-                    curve="bezier"
-                    exponential
-                    opacity={1}
-                    zIndex={3}
-                  />
-                  <GradualBlur
-                    target="parent"
                     position="top"
                     height={motion.videoBleed.top}
                     strength={motion.videoBleed.strength * 0.9}
@@ -331,12 +321,29 @@ export function IntroHero() {
                   />
                 </div>
               </div>
+
+              <div className="hero__blend-edge" aria-hidden="true" />
             </div>
           </div>
+
+          <GradualBlur
+            target="parent"
+            position="bottom"
+            height="8rem"
+            strength={2.4}
+            divCount={8}
+            curve="bezier"
+            exponential
+            opacity={1}
+            zIndex={12}
+            className="hero__page-blur"
+          />
         </div>
 
         <div className="loader-surface" ref={overlayRef} aria-hidden="true" />
       </div>
+
+      <SiteBelow />
 
       <div className="logo-flight" aria-hidden="true">
         <LogoMark className="logo-flight__mark logo-flight__mark--main" ref={logoRef} />

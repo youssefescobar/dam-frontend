@@ -34,10 +34,10 @@ export const animationConfig = {
     blobDurationSeconds: 18,
   },
   video: {
-    introStart: 0.46,
-    fadeDuration: 1.05,
+    introStart: 1.35,
+    fadeDuration: 1.2,
     loop: false,
-    objectPositionDesktop: '52% 42%',
+    objectPositionDesktop: '58% 42%',
     objectPositionMobile: '50% 40%',
     mobileBreakpoint: 980,
     endFrameOffsetSeconds: 0.05,
@@ -51,8 +51,8 @@ export const animationConfig = {
   },
   videoFrame: {
     radius: 28,
-    revealStart: 0.38,
-    revealDuration: 1.05,
+    revealStart: 1.15,
+    revealDuration: 1.15,
   },
   aiChat: {
     revealStart: 2.28,
@@ -60,7 +60,7 @@ export const animationConfig = {
   },
   videoBleed: {
     left: '5.5rem',
-    right: '2.5rem',
+    right: '0rem',
     top: '2.25rem',
     bottom: '2.5rem',
     strength: 1.05,
