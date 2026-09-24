@@ -59,7 +59,7 @@ export const animationConfig = {
     revealDuration: 0.78,
   },
   videoBleed: {
-    left: '2.75rem',
+    left: '5.5rem',
     right: '2.5rem',
     top: '2.25rem',
     bottom: '2.5rem',

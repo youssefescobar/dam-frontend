@@ -254,79 +254,82 @@ export function IntroHero() {
           </div>
 
           <div className="hero__layout">
-            <GlassCard className="hero__glass" ref={heroCardRef}>
-              <div className="hero__content">
-                <p className="hero__eyebrow line-mask">
-                  <span ref={collectHeroLine}>Durrah Al Munawwara Transportation</span>
-                </p>
-                <h1 id="hero-title">
-                  <span className="line-mask">
-                    <span ref={collectHeroLine}>Moving you</span>
-                  </span>
-                  <span className="line-mask">
-                    <span ref={collectHeroLine}>forward</span>
-                  </span>
-                </h1>
-                <p className="hero__sub line-mask">
-                  <span ref={collectHeroLine}>Premium journeys, thoughtfully driven across every mile.</span>
-                </p>
-                <div className="line-mask line-mask--cta">
-                  <ExploreButton className="hero__cta" href="#services" ref={collectHeroLine}>
-                    Explore our services
-                  </ExploreButton>
+            <div className="hero__blend">
+              <GlassCard className="hero__glass" ref={heroCardRef}>
+                <div className="hero__content">
+                  <p className="hero__eyebrow line-mask">
+                    <span ref={collectHeroLine}>Durrah Al Munawwara Transportation</span>
+                  </p>
+                  <h1 id="hero-title">
+                    <span className="line-mask">
+                      <span ref={collectHeroLine}>Moving you</span>
+                    </span>
+                    <span className="line-mask">
+                      <span ref={collectHeroLine}>forward</span>
+                    </span>
+                  </h1>
+                  <p className="hero__sub line-mask">
+                    <span ref={collectHeroLine}>Premium journeys, thoughtfully driven across every mile.</span>
+                  </p>
+                  <div className="line-mask line-mask--cta">
+                    <ExploreButton className="hero__cta" href="#services" ref={collectHeroLine}>
+                      Explore our services
+                    </ExploreButton>
+                  </div>
                 </div>
-              </div>
-            </GlassCard>
+              </GlassCard>
 
-            <div className="hero__stage-wrap" ref={videoStageRef}>
-              <div
-                className="hero__stage"
-                style={{ borderRadius: motion.videoFrame.radius }}
-              >
-                <HeroVideo ref={heroVideoRef} reducedMotion={prefersReducedMotion} />
-                <div className="hero__stage-fade" aria-hidden="true" />
-                <GradualBlur
-                  target="parent"
-                  position="left"
-                  height={motion.videoBleed.left}
-                  strength={motion.videoBleed.strength}
-                  divCount={motion.videoBleed.divCount}
-                  curve="bezier"
-                  exponential
-                  opacity={1}
-                  zIndex={3}
-                />
-                <GradualBlur
-                  target="parent"
-                  position="right"
-                  height={motion.videoBleed.right}
-                  strength={motion.videoBleed.strength}
-                  divCount={motion.videoBleed.divCount}
-                  curve="bezier"
-                  exponential
-                  opacity={1}
-                  zIndex={3}
-                />
-                <GradualBlur
-                  target="parent"
-                  position="top"
-                  height={motion.videoBleed.top}
-                  strength={motion.videoBleed.strength * 0.9}
-                  divCount={motion.videoBleed.divCount}
-                  curve="bezier"
-                  opacity={1}
-                  zIndex={3}
-                />
-                <GradualBlur
-                  target="parent"
-                  position="bottom"
-                  height={motion.videoBleed.bottom}
-                  strength={motion.videoBleed.strength * 0.9}
-                  divCount={motion.videoBleed.divCount}
-                  curve="bezier"
-                  opacity={1}
-                  zIndex={3}
-                />
+              <div className="hero__stage-wrap" ref={videoStageRef}>
+                <div
+                  className="hero__stage"
+                  style={{ borderRadius: motion.videoFrame.radius }}
+                >
+                  <HeroVideo ref={heroVideoRef} reducedMotion={prefersReducedMotion} />
+                  <div className="hero__stage-fade" aria-hidden="true" />
+                  <div className="hero__stage-seam" aria-hidden="true" />
+                  <GradualBlur
+                    target="parent"
+                    position="left"
+                    height={motion.videoBleed.left}
+                    strength={motion.videoBleed.strength * 1.25}
+                    divCount={motion.videoBleed.divCount}
+                    curve="bezier"
+                    exponential
+                    opacity={1}
+                    zIndex={3}
+                  />
+                  <GradualBlur
+                    target="parent"
+                    position="right"
+                    height={motion.videoBleed.right}
+                    strength={motion.videoBleed.strength}
+                    divCount={motion.videoBleed.divCount}
+                    curve="bezier"
+                    exponential
+                    opacity={1}
+                    zIndex={3}
+                  />
+                  <GradualBlur
+                    target="parent"
+                    position="top"
+                    height={motion.videoBleed.top}
+                    strength={motion.videoBleed.strength * 0.9}
+                    divCount={motion.videoBleed.divCount}
+                    curve="bezier"
+                    opacity={1}
+                    zIndex={3}
+                  />
+                  <GradualBlur
+                    target="parent"
+                    position="bottom"
+                    height={motion.videoBleed.bottom}
+                    strength={motion.videoBleed.strength * 0.9}
+                    divCount={motion.videoBleed.divCount}
+                    curve="bezier"
+                    opacity={1}
+                    zIndex={3}
+                  />
+                </div>
               </div>
             </div>
           </div>
