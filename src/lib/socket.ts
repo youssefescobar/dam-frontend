@@ -20,8 +20,15 @@ export function getCustomerSocket(): Socket {
   if (!socket) {
     socket = io(socketServerUrl(), {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      // Dev: polling first — Vite's WS upgrade to a remote API is flaky on deploy/restart.
+      // Prod: websocket first for lower latency.
+      transports: import.meta.env.DEV
+        ? ['polling', 'websocket']
+        : ['websocket', 'polling'],
       autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: 8,
+      reconnectionDelay: 800,
     })
   }
   return socket

@@ -27,6 +27,21 @@ export default defineConfig(({ mode }) => {
         '/socket.io': {
           ...apiProxy,
           ws: true,
+          // Backend restarts (deploy) abort the proxied socket; don't treat as fatal.
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              if (err && (err as NodeJS.ErrnoException).code === 'ECONNABORTED') {
+                return
+              }
+              console.warn('[vite] socket.io proxy:', err.message)
+            })
+            proxy.on('proxyReqWs', (_proxyReq, _req, socket) => {
+              socket.on('error', (err) => {
+                if ((err as NodeJS.ErrnoException).code === 'ECONNABORTED') return
+                console.warn('[vite] socket.io ws:', err.message)
+              })
+            })
+          },
         },
       },
     },

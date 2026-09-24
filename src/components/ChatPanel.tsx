@@ -10,7 +10,6 @@ import {
 import { useLanguage } from '../i18n/LanguageContext'
 import {
   fetchGuidedWelcome,
-  loadConversationId,
   saveConversationId,
   sendChatMessage,
   type ChatOption,
@@ -193,8 +192,12 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         seenIdsRef.current.add(welcomeMsg.id)
         setMessages([welcomeMsg])
         setOptions(welcome.options ?? [])
-        const existingId = loadConversationId()
-        setConversationId(existingId)
+        // Do not resume old escalated threads — they block AI until "New chat".
+        // Fresh session each panel open keeps guided/FAQ replies working in local dev.
+        saveConversationId(null)
+        setConversationId(null)
+        setEscalated(false)
+        setClaimed(false)
         setBooted(true)
       } catch (err) {
         if (cancelled) return
