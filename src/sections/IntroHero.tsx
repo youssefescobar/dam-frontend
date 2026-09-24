@@ -8,10 +8,10 @@ import {
 import gsap from 'gsap'
 import { LogoMark } from '../components/LogoMark'
 import { HeroVideo, type HeroVideoHandle } from '../components/HeroVideo'
-import { AiChatButton } from '../components/AiChatButton'
 import { ExploreButton } from '../components/ExploreButton'
 import { SiteNav } from '../components/SiteNav'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
+import { ChatWidget } from '../components/ChatWidget'
 import { GlassCard } from '../components/glass'
 import GradualBlur from '../components/effects/GradualBlur'
 import { animationConfig as motion } from '../animations/config'
@@ -78,7 +78,7 @@ function IntroHeroInner({
   const heroVideoRef = useRef<HeroVideoHandle>(null)
   const heroCardRef = useRef<HTMLDivElement>(null)
   const videoStageRef = useRef<HTMLDivElement>(null)
-  const aiChatRef = useRef<HTMLAnchorElement>(null)
+  const aiChatRef = useRef<HTMLButtonElement>(null)
 
   const collectNavItem = (element: HTMLElement | null) => {
     if (element && !navItemsRef.current.includes(element)) navItemsRef.current.push(element)
@@ -438,7 +438,7 @@ function IntroHeroInner({
         <i />
       </div>
 
-      <AiChatButton href="#chat" ref={aiChatRef} />
+      <ChatWidget ref={aiChatRef} />
     </section>
   )
 }
