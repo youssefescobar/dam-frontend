@@ -227,11 +227,31 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
       setOptions([])
 
       try {
-        const reply = await sendChatMessage({
+        let activeConversationId = conversationId
+        let reply = await sendChatMessage({
           text: text || undefined,
           choiceId,
-          conversationId,
+          conversationId: activeConversationId,
         })
+
+        // Prior LLM outages used to escalate and sticky-lock the saved id.
+        // Retry once on a fresh conversation so guided/AI can answer again.
+        if (
+          reply.reason === 'already_escalated' &&
+          !reply.answer &&
+          activeConversationId
+        ) {
+          saveConversationId(null)
+          setConversationId(null)
+          setEscalated(false)
+          activeConversationId = null
+          reply = await sendChatMessage({
+            text: text || undefined,
+            choiceId,
+            conversationId: null,
+          })
+        }
+
         setConversationId(reply.conversationId)
         saveConversationId(reply.conversationId)
         joinConversation(reply.conversationId)

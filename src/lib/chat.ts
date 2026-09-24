@@ -10,6 +10,7 @@ export type ChatReply = {
   reason: string | null
   systemMessage: string | null
   options?: ChatOption[]
+  detail?: string | null
 }
 
 export type GuidedWelcome = {
