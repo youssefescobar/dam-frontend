@@ -19,30 +19,66 @@ export type GuidedWelcome = {
   reason: string
 }
 
-const GUEST_KEY = 'damic-chat-guest'
+export type VisitorIdentity = {
+  name: string
+  email: string
+  phone: string
+}
+
+export type ChatSession = {
+  conversationId: string
+  status: string
+  customer: {
+    id?: string
+    name: string
+    contact?: string
+    email?: string | null
+    phone?: string | null
+  }
+}
+
+const IDENTITY_KEY = 'damic-chat-identity'
 const CONV_KEY = 'damic-chat-conversation'
 
-export function getGuestIdentity() {
+export function loadIdentity(): VisitorIdentity | null {
   try {
-    const stored = localStorage.getItem(GUEST_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored) as { name: string; contact: string }
-      if (parsed?.contact) return parsed
+    const stored = localStorage.getItem(IDENTITY_KEY)
+    if (!stored) return null
+    const parsed = JSON.parse(stored) as VisitorIdentity
+    if (parsed?.name?.trim() && parsed?.email?.trim() && parsed?.phone?.trim()) {
+      return {
+        name: parsed.name.trim(),
+        email: parsed.email.trim().toLowerCase(),
+        phone: parsed.phone.trim(),
+      }
     }
   } catch {
     /* ignore */
   }
+  return null
+}
 
-  const identity = {
-    name: 'Website guest',
-    contact: `guest-${crypto.randomUUID?.() ?? Date.now()}@web.damic`,
-  }
+export function saveIdentity(identity: VisitorIdentity) {
   try {
-    localStorage.setItem(GUEST_KEY, JSON.stringify(identity))
+    localStorage.setItem(
+      IDENTITY_KEY,
+      JSON.stringify({
+        name: identity.name.trim(),
+        email: identity.email.trim().toLowerCase(),
+        phone: identity.phone.trim(),
+      }),
+    )
   } catch {
     /* ignore */
   }
-  return identity
+}
+
+export function clearIdentity() {
+  try {
+    localStorage.removeItem(IDENTITY_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 export function loadConversationId(): string | null {
@@ -66,20 +102,31 @@ export function fetchGuidedWelcome() {
   return api<GuidedWelcome>('/chat/guided')
 }
 
+export function startChatSession(identity: VisitorIdentity) {
+  return api<ChatSession>('/chat/session', {
+    method: 'POST',
+    json: {
+      name: identity.name.trim(),
+      email: identity.email.trim().toLowerCase(),
+      phone: identity.phone.trim(),
+    },
+  })
+}
+
 export function sendChatMessage(input: {
   text?: string
   choiceId?: string
   conversationId?: string | null
 }) {
-  const guest = getGuestIdentity()
+  if (!input.conversationId) {
+    return Promise.reject(new Error('Start a chat session first'))
+  }
   return api<ChatReply>('/chat/message', {
     method: 'POST',
     json: {
       text: input.text,
       choiceId: input.choiceId,
-      conversationId: input.conversationId || undefined,
-      customerName: guest.name,
-      customerContact: guest.contact,
+      conversationId: input.conversationId,
     },
   })
 }

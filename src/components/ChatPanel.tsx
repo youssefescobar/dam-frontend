@@ -9,10 +9,15 @@ import {
 } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 import {
+  clearIdentity,
   fetchGuidedWelcome,
+  loadIdentity,
   saveConversationId,
+  saveIdentity,
   sendChatMessage,
+  startChatSession,
   type ChatOption,
+  type VisitorIdentity,
 } from '../lib/chat'
 import { ApiError } from '../lib/api'
 import {
@@ -45,6 +50,10 @@ function mapSocketSender(sender: string): Role {
   return 'assistant'
 }
 
+function emptyIdentity(): VisitorIdentity {
+  return { name: '', email: '', phone: '' }
+}
+
 export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const { t, dir } = useLanguage()
   const titleId = useId()
@@ -52,6 +61,8 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const seenIdsRef = useRef<Set<string>>(new Set())
 
+  const [identity, setIdentity] = useState<VisitorIdentity>(() => loadIdentity() || emptyIdentity())
+  const [identified, setIdentified] = useState(() => Boolean(loadIdentity()))
   const [messages, setMessages] = useState<UiMessage[]>([])
   const [options, setOptions] = useState<ChatOption[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
@@ -66,13 +77,8 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     if (seenIdsRef.current.has(message.id)) return
     seenIdsRef.current.add(message.id)
     setMessages((prev) => {
-      // Deduplicate identical trailing text from the same role (HTTP + socket race).
       const last = prev[prev.length - 1]
-      if (
-        last &&
-        last.role === message.role &&
-        last.text === message.text
-      ) {
+      if (last && last.role === message.role && last.text === message.text) {
         return prev
       }
       return [...prev, message]
@@ -86,12 +92,11 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !identified) return
     scrollToEnd()
     window.setTimeout(() => inputRef.current?.focus(), 80)
-  }, [open, messages, options, scrollToEnd])
+  }, [open, identified, messages, options, scrollToEnd])
 
-  // Live human agent channel
   useEffect(() => {
     if (!open || !conversationId) return
 
@@ -113,7 +118,6 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
       const text = String(payload.text || '').trim()
       if (!text) return
       const sender = payload.sender || 'ai'
-      // Customer echoes are already shown from the HTTP send path.
       if (sender === 'customer') return
 
       appendMessage({
@@ -155,7 +159,6 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     socket.on('conversation:claimed', onClaimed)
     socket.on('conversation:escalated', onEscalated)
 
-    // Re-join after reconnects
     const onConnect = () => joinConversation(conversationId)
     socket.on('connect', onConnect)
 
@@ -168,54 +171,79 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   }, [open, conversationId, appendMessage, t.chat.claimed])
 
   useEffect(() => {
-    if (!open) return
-    return () => {
-      // Keep socket while panel can reopen quickly; full teardown on unmount of widget only.
-    }
-  }, [open])
-
-  useEffect(() => {
     return () => disconnectCustomerSocket()
   }, [])
 
-  useEffect(() => {
-    if (!open || booted) return
-    let cancelled = false
-
-    const boot = async () => {
+  const beginSession = useCallback(
+    async (visitor: VisitorIdentity) => {
       setBusy(true)
       setBootError(null)
       try {
+        saveIdentity(visitor)
+        const session = await startChatSession(visitor)
         const welcome = await fetchGuidedWelcome()
-        if (cancelled) return
-        const welcomeMsg = { id: uid(), role: 'assistant' as const, text: welcome.answer }
+
+        const welcomeMsg = {
+          id: uid(),
+          role: 'assistant' as const,
+          text: welcome.answer,
+        }
+        seenIdsRef.current.clear()
         seenIdsRef.current.add(welcomeMsg.id)
         setMessages([welcomeMsg])
         setOptions(welcome.options ?? [])
-        // Do not resume old escalated threads — they block AI until "New chat".
-        // Fresh session each panel open keeps guided/FAQ replies working in local dev.
-        saveConversationId(null)
-        setConversationId(null)
+        setConversationId(session.conversationId)
+        saveConversationId(session.conversationId)
+        joinConversation(session.conversationId)
         setEscalated(false)
         setClaimed(false)
+        setIdentified(true)
         setBooted(true)
       } catch (err) {
-        if (cancelled) return
         setBootError(err instanceof ApiError ? err.message : t.chat.error)
+        throw err
       } finally {
-        if (!cancelled) setBusy(false)
+        setBusy(false)
       }
-    }
+    },
+    [t.chat.error],
+  )
 
-    void boot()
+  useEffect(() => {
+    if (!open || !identified || booted) return
+    const visitor = loadIdentity()
+    if (!visitor) {
+      setIdentified(false)
+      return
+    }
+    let cancelled = false
+    void beginSession(visitor).catch(() => {
+      if (!cancelled) setIdentified(false)
+    })
     return () => {
       cancelled = true
     }
-  }, [open, booted, t.chat.error])
+  }, [open, identified, booted, beginSession])
+
+  const onIdentitySubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    const next = {
+      name: identity.name.trim(),
+      email: identity.email.trim(),
+      phone: identity.phone.trim(),
+    }
+    if (!next.name || !next.email || !next.phone) return
+    setIdentity(next)
+    try {
+      await beginSession(next)
+    } catch {
+      /* bootError set */
+    }
+  }
 
   const send = useCallback(
     async (payload: { text?: string; choiceId?: string; label?: string }) => {
-      if (busy) return
+      if (busy || !conversationId) return
       const text = payload.text?.trim()
       const choiceId = payload.choiceId
       if (!text && !choiceId) return
@@ -237,29 +265,36 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
           conversationId: activeConversationId,
         })
 
-        // Prior LLM outages used to escalate and sticky-lock the saved id.
-        // Retry once on a fresh conversation so guided/AI can answer again.
         if (
           reply.reason === 'already_escalated' &&
           !reply.answer &&
           activeConversationId
         ) {
-          saveConversationId(null)
-          setConversationId(null)
-          setEscalated(false)
-          activeConversationId = null
-          reply = await sendChatMessage({
-            text: text || undefined,
-            choiceId,
-            conversationId: null,
-          })
+          const visitor = loadIdentity()
+          if (visitor) {
+            const session = await startChatSession(visitor)
+            activeConversationId = session.conversationId
+            setConversationId(activeConversationId)
+            saveConversationId(activeConversationId)
+            setEscalated(false)
+            setClaimed(false)
+            reply = await sendChatMessage({
+              text: text || undefined,
+              choiceId,
+              conversationId: activeConversationId,
+            })
+          }
         }
 
         setConversationId(reply.conversationId)
         saveConversationId(reply.conversationId)
         joinConversation(reply.conversationId)
 
-        if (reply.escalated || reply.reason === 'claimed' || reply.reason === 'already_escalated') {
+        if (
+          reply.escalated ||
+          reply.reason === 'claimed' ||
+          reply.reason === 'already_escalated'
+        ) {
           setEscalated(true)
         }
         if (reply.reason === 'claimed') setClaimed(true)
@@ -311,6 +346,23 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     setDraft('')
     seenIdsRef.current.clear()
     disconnectCustomerSocket()
+    // Keep identity; reopen boots a fresh session
+  }
+
+  const changeIdentity = () => {
+    clearIdentity()
+    saveConversationId(null)
+    setConversationId(null)
+    setIdentified(false)
+    setBooted(false)
+    setMessages([])
+    setOptions([])
+    setEscalated(false)
+    setClaimed(false)
+    setBootError(null)
+    setDraft('')
+    seenIdsRef.current.clear()
+    disconnectCustomerSocket()
   }
 
   if (!open) return null
@@ -321,6 +373,9 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     if (role === 'admin') return t.chat.agent
     return t.chat.assistant
   }
+
+  const canSubmitIdentity =
+    identity.name.trim() && identity.email.trim() && identity.phone.trim()
 
   return (
     <div
@@ -334,17 +389,30 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         <div className="chat-panel__heading">
           <h2 id={titleId}>{t.chat.title}</h2>
           <p>
-            {claimed
-              ? t.chat.claimed
-              : escalated
-                ? t.chat.escalated
-                : t.chat.subtitle}
+            {!identified
+              ? t.chat.identityLead
+              : claimed
+                ? t.chat.claimed
+                : escalated
+                  ? t.chat.escalated
+                  : t.chat.subtitle}
           </p>
         </div>
         <div className="chat-panel__actions">
-          <button type="button" className="chat-panel__ghost" onClick={resetChat}>
-            {t.chat.reset}
-          </button>
+          {identified ? (
+            <>
+              <button
+                type="button"
+                className="chat-panel__ghost"
+                onClick={changeIdentity}
+              >
+                {t.chat.identityChange}
+              </button>
+              <button type="button" className="chat-panel__ghost" onClick={resetChat}>
+                {t.chat.reset}
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className="chat-panel__close"
@@ -356,54 +424,107 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         </div>
       </header>
 
-      <div className="chat-panel__messages" ref={listRef}>
-        {messages.length === 0 && !busy && !bootError ? (
-          <p className="chat-panel__hint">{t.chat.empty}</p>
-        ) : null}
+      {!identified ? (
+        <form className="chat-panel__identity" onSubmit={(e) => void onIdentitySubmit(e)}>
+          <h3>{t.chat.identityTitle}</h3>
+          <p>{t.chat.identityLead}</p>
+          <label>
+            <span>{t.chat.identityName}</span>
+            <input
+              type="text"
+              name="name"
+              autoComplete="name"
+              required
+              value={identity.name}
+              placeholder={t.chat.identityNamePh}
+              onChange={(e) => setIdentity((s) => ({ ...s, name: e.target.value }))}
+            />
+          </label>
+          <label>
+            <span>{t.chat.identityEmail}</span>
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              required
+              value={identity.email}
+              placeholder={t.chat.identityEmailPh}
+              onChange={(e) => setIdentity((s) => ({ ...s, email: e.target.value }))}
+            />
+          </label>
+          <label>
+            <span>{t.chat.identityPhone}</span>
+            <input
+              type="tel"
+              name="phone"
+              autoComplete="tel"
+              inputMode="tel"
+              required
+              value={identity.phone}
+              placeholder={t.chat.identityPhonePh}
+              onChange={(e) => setIdentity((s) => ({ ...s, phone: e.target.value }))}
+            />
+          </label>
+          {bootError ? <p className="chat-panel__error">{bootError}</p> : null}
+          <button type="submit" disabled={busy || !canSubmitIdentity}>
+            {busy ? t.chat.identityStarting : t.chat.identityContinue}
+          </button>
+        </form>
+      ) : (
+        <>
+          <div className="chat-panel__messages" ref={listRef}>
+            {messages.length === 0 && !busy && !bootError ? (
+              <p className="chat-panel__hint">{t.chat.empty}</p>
+            ) : null}
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`chat-bubble chat-bubble--${message.role}`}
-          >
-            <span className="chat-bubble__who">{whoLabel(message.role)}</span>
-            <p>{message.text}</p>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`chat-bubble chat-bubble--${message.role}`}
+              >
+                <span className="chat-bubble__who">{whoLabel(message.role)}</span>
+                <p>{message.text}</p>
+              </div>
+            ))}
+
+            {busy ? <p className="chat-panel__hint">{t.chat.sending}</p> : null}
+            {bootError ? <p className="chat-panel__error">{bootError}</p> : null}
           </div>
-        ))}
 
-        {busy ? <p className="chat-panel__hint">{t.chat.sending}</p> : null}
-        {bootError ? <p className="chat-panel__error">{bootError}</p> : null}
-      </div>
+          {options.length > 0 && !escalated ? (
+            <div className="chat-panel__options">
+              {options.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void send({ choiceId: option.id, label: option.label })}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-      {options.length > 0 && !escalated ? (
-        <div className="chat-panel__options">
-          {options.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              disabled={busy}
-              onClick={() => void send({ choiceId: option.id, label: option.label })}
-            >
-              {option.label}
+          <form className="chat-panel__composer" onSubmit={onSubmit}>
+            <textarea
+              ref={inputRef}
+              rows={2}
+              value={draft}
+              disabled={busy || !conversationId}
+              placeholder={t.chat.placeholder}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={onKeyDown}
+            />
+            <button type="submit" disabled={busy || !draft.trim() || !conversationId}>
+              {t.chat.send}
             </button>
-          ))}
-        </div>
-      ) : null}
-
-      <form className="chat-panel__composer" onSubmit={onSubmit}>
-        <textarea
-          ref={inputRef}
-          rows={2}
-          value={draft}
-          disabled={busy}
-          placeholder={t.chat.placeholder}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={onKeyDown}
-        />
-        <button type="submit" disabled={busy || !draft.trim()}>
-          {t.chat.send}
-        </button>
-      </form>
+          </form>
+        </>
+      )}
     </div>
   )
 }
