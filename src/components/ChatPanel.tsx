@@ -19,6 +19,7 @@ import {
   type ChatOption,
   type VisitorIdentity,
 } from '../lib/chat'
+import { playChatNotifySound } from '../lib/chatNotify'
 import { ApiError } from '../lib/api'
 import {
   connectCustomerSocket,
@@ -37,6 +38,7 @@ type UiMessage = {
 type ChatPanelProps = {
   open: boolean
   onClose: () => void
+  onUnreadChange?: (count: number) => void
 }
 
 function uid() {
@@ -54,12 +56,14 @@ function emptyIdentity(): VisitorIdentity {
   return { name: '', email: '', phone: '' }
 }
 
-export function ChatPanel({ open, onClose }: ChatPanelProps) {
+export function ChatPanel({ open, onClose, onUnreadChange }: ChatPanelProps) {
   const { t, dir } = useLanguage()
   const titleId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const seenIdsRef = useRef<Set<string>>(new Set())
+  const openRef = useRef(open)
+  const unreadRef = useRef(0)
 
   const [identity, setIdentity] = useState<VisitorIdentity>(() => loadIdentity() || emptyIdentity())
   const [identified, setIdentified] = useState(() => Boolean(loadIdentity()))
@@ -72,6 +76,27 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const [claimed, setClaimed] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
   const [booted, setBooted] = useState(false)
+
+  openRef.current = open
+
+  const setUnread = useCallback(
+    (n: number) => {
+      unreadRef.current = n
+      onUnreadChange?.(n)
+    },
+    [onUnreadChange],
+  )
+
+  const bumpUnread = useCallback(() => {
+    if (openRef.current) return
+    const next = unreadRef.current + 1
+    setUnread(next)
+    playChatNotifySound()
+  }, [setUnread])
+
+  useEffect(() => {
+    if (open) setUnread(0)
+  }, [open, setUnread])
 
   const appendMessage = useCallback((message: UiMessage) => {
     if (seenIdsRef.current.has(message.id)) return
@@ -97,8 +122,9 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     window.setTimeout(() => inputRef.current?.focus(), 80)
   }, [open, identified, messages, options, scrollToEnd])
 
+  // Keep listening even when the panel is closed so badge + sound still work.
   useEffect(() => {
-    if (!open || !conversationId) return
+    if (!conversationId) return
 
     const socket = connectCustomerSocket()
     joinConversation(conversationId)
@@ -125,6 +151,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         role: mapSocketSender(sender),
         text,
       })
+      bumpUnread()
 
       if (sender === 'admin') {
         setClaimed(true)
@@ -145,6 +172,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         role: 'system',
         text: t.chat.claimed,
       })
+      bumpUnread()
     }
 
     const onEscalated = (payload: { conversationId?: string }) => {
@@ -168,7 +196,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
       socket.off('conversation:escalated', onEscalated)
       socket.off('connect', onConnect)
     }
-  }, [open, conversationId, appendMessage, t.chat.claimed])
+  }, [conversationId, appendMessage, bumpUnread, t.chat.claimed])
 
   useEffect(() => {
     return () => disconnectCustomerSocket()
@@ -199,6 +227,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         setClaimed(false)
         setIdentified(true)
         setBooted(true)
+        setUnread(0)
       } catch (err) {
         setBootError(err instanceof ApiError ? err.message : t.chat.error)
         throw err
@@ -206,7 +235,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         setBusy(false)
       }
     },
-    [t.chat.error],
+    [t.chat.error, setUnread],
   )
 
   useEffect(() => {
@@ -345,8 +374,8 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     setBootError(null)
     setDraft('')
     seenIdsRef.current.clear()
+    setUnread(0)
     disconnectCustomerSocket()
-    // Keep identity; reopen boots a fresh session
   }
 
   const changeIdentity = () => {
@@ -362,6 +391,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     setBootError(null)
     setDraft('')
     seenIdsRef.current.clear()
+    setUnread(0)
     disconnectCustomerSocket()
   }
 
@@ -377,6 +407,12 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const canSubmitIdentity =
     identity.name.trim() && identity.email.trim() && identity.phone.trim()
 
+  const statusLabel = claimed
+    ? t.chat.claimed
+    : escalated
+      ? t.chat.escalated
+      : t.chat.subtitle
+
   return (
     <div
       className="chat-panel"
@@ -387,31 +423,25 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     >
       <header className="chat-panel__header">
         <div className="chat-panel__heading">
-          <h2 id={titleId}>{t.chat.title}</h2>
-          <p>
-            {!identified
-              ? t.chat.identityLead
-              : claimed
-                ? t.chat.claimed
-                : escalated
-                  ? t.chat.escalated
-                  : t.chat.subtitle}
-          </p>
+          <div className="chat-panel__title-row">
+            <span className="chat-panel__live" aria-hidden />
+            <h2 id={titleId}>{t.chat.title}</h2>
+          </div>
+          {identified ? (
+            <p>
+              {statusLabel}
+              {' · '}
+              <button type="button" className="chat-panel__inline" onClick={changeIdentity}>
+                {t.chat.identityChange}
+              </button>
+            </p>
+          ) : null}
         </div>
         <div className="chat-panel__actions">
           {identified ? (
-            <>
-              <button
-                type="button"
-                className="chat-panel__ghost"
-                onClick={changeIdentity}
-              >
-                {t.chat.identityChange}
-              </button>
-              <button type="button" className="chat-panel__ghost" onClick={resetChat}>
-                {t.chat.reset}
-              </button>
-            </>
+            <button type="button" className="chat-panel__ghost" onClick={resetChat}>
+              {t.chat.reset}
+            </button>
           ) : null}
           <button
             type="button"
@@ -480,27 +510,35 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
               <p className="chat-panel__hint">{t.chat.empty}</p>
             ) : null}
 
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <div
                 key={message.id}
                 className={`chat-bubble chat-bubble--${message.role}`}
+                style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
               >
                 <span className="chat-bubble__who">{whoLabel(message.role)}</span>
                 <p>{message.text}</p>
               </div>
             ))}
 
-            {busy ? <p className="chat-panel__hint">{t.chat.sending}</p> : null}
+            {busy ? (
+              <div className="chat-typing" aria-live="polite">
+                <span />
+                <span />
+                <span />
+              </div>
+            ) : null}
             {bootError ? <p className="chat-panel__error">{bootError}</p> : null}
           </div>
 
           {options.length > 0 && !escalated ? (
             <div className="chat-panel__options">
-              {options.map((option) => (
+              {options.map((option, i) => (
                 <button
                   key={option.id}
                   type="button"
                   disabled={busy}
+                  style={{ animationDelay: `${i * 40}ms` }}
                   onClick={() => void send({ choiceId: option.id, label: option.label })}
                 >
                   {option.label}
